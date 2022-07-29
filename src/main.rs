@@ -2,8 +2,9 @@ use asking::error::Processing;
 use std::time::Duration;
 use tokio::net::TcpListener;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use std::process::Command;
-use std::io::Cursor;
+use std::process::{Command, Stdio};
+use std::io::{BufRead, BufReader, Error, ErrorKind};
+use std::io::{Cursor, Read, Write};
 use std::fs;
 use std::path::Path;
 
@@ -131,13 +132,52 @@ async fn main() {
         }
     }
 
+    println!("Downloading server...");
     let response = reqwest::get(url).await.unwrap();
-    let file_name: String = directory.clone().to_owned() + "/server.jar";
-    let mut file = std::fs::File::create(file_name).unwrap();
+    let file_name: String = directory.clone().to_string() + "/server.jar";
+    let mut file = std::fs::File::create(&file_name).unwrap();
     let mut content =  Cursor::new(response.bytes().await.unwrap());
     std::io::copy(&mut content, &mut file).unwrap();
+    println!("Server downloaded to {}", &file_name);
 
+    println!("Starting server to create files...");
+    let command = Command::new("java")
+        .args(["-Xmx1024M", "-Xms1024M", "-jar", "./server.jar", "nogui"])
+        .current_dir(directory)
+        .output();
 
+    match command {
+        Ok(output) => {
+            println!("{}", String::from_utf8_lossy(&output.stdout));
+            println!("{}", String::from_utf8_lossy(&output.stderr));
+        }
+        Err(e) => {
+            println!("Failed to start server: {}", e);
+            std::process::exit(1);
+        }
+    }
+
+    let mut eula = fs::File::open(Path::new(&directory).join("eula.txt")).unwrap();
+    let mut eula_file = String::new();
+    eula.read_to_string(&mut eula_file).unwrap();
+    let eulafile = eula_file.replace("eula=false", "eula=true");
+    let mut eula = fs::File::create(Path::new(&directory).join("eula.txt")).unwrap();
+    eula.write_all(eulafile.as_bytes()).unwrap();
+
+    println!("Starting server...");
+    println!("To stop the server, type \"stop\"");
+    let command = Command::new("java")
+        .args(["-Xmx1024M", "-Xms1024M", "-jar", "./server.jar", "nogui"])
+        .current_dir(directory)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn().unwrap()
+        .stdout
+        .ok_or_else(|| Error::new(ErrorKind::Other,"Could not capture standard output.")).unwrap();
+
+    let reader = BufReader::new(command);
+
+    reader.lines().filter_map(|line| line.ok()).for_each(|line| println!("{}", line));
 }
 
 fn string_to_static_str(s: String) -> &'static str {
