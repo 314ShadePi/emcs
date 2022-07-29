@@ -3,7 +3,9 @@ use std::time::Duration;
 use tokio::net::TcpListener;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use std::process::Command;
+use std::io::Cursor;
 use std::fs;
+use std::path::Path;
 
 #[tokio::main]
 async fn main() {
@@ -117,6 +119,12 @@ async fn main() {
             return;
         }
     }
+
+    let response = reqwest::get(url).await.unwrap();
+    let file_name: String = directory.clone().to_owned() + "server.jar";
+    let mut file = std::fs::File::create(file_name).unwrap();
+    let mut content =  Cursor::new(response.bytes().await.unwrap());
+    std::io::copy(&mut content, &mut file).unwrap();
 }
 
 fn string_to_static_str(s: String) -> &'static str {
