@@ -9,6 +9,17 @@ use std::path::Path;
 
 #[tokio::main]
 async fn main() {
+    let javatest = Command::new("java").arg("--version").output();
+    match javatest {
+        Ok(_) => {},
+        Err(e) => {
+            println!("{}", e);
+            println!("Please install java");
+            std::process::exit(1);
+        }
+    }
+
+
     let versions = vec![
         "1.12.2".to_string(),
         "1.13".to_string(),
@@ -112,7 +123,7 @@ async fn main() {
     let directory_creation_res = fs::create_dir_all(&directory);
     match directory_creation_res {
         Ok(_) => {
-            println!("DIrectory created");
+            println!("Directory created");
         }
         Err(e) => {
             println!("Failed to create directory: {}", e);
@@ -121,10 +132,12 @@ async fn main() {
     }
 
     let response = reqwest::get(url).await.unwrap();
-    let file_name: String = directory.clone().to_owned() + "server.jar";
+    let file_name: String = directory.clone().to_owned() + "/server.jar";
     let mut file = std::fs::File::create(file_name).unwrap();
     let mut content =  Cursor::new(response.bytes().await.unwrap());
     std::io::copy(&mut content, &mut file).unwrap();
+
+
 }
 
 fn string_to_static_str(s: String) -> &'static str {
