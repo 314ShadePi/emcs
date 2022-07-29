@@ -45,6 +45,8 @@ async fn main() {
         "1.18".to_string(),
         "1.18.1".to_string(),
         "1.18.2".to_string(),
+        "1.19".to_string(),
+        "1.19.1".to_string(),
     ];
     loop {
         let eula_accepted = asking::yn()
@@ -99,6 +101,8 @@ async fn main() {
         "1.18" => "https://launcher.mojang.com/v1/objects/3cf24a8694aca6267883b17d934efacc5e44440d/server.jar",
         "1.18.1" => "https://launcher.mojang.com/v1/objects/125e5adf40c659fd3bce3e66e67a16bb49ecc1b9/server.jar",
         "1.18.2" => "https://launcher.mojang.com/v1/objects/c8f83c5655308435b3dcf03c06d9fe8740a77469/server.jar",
+        "1.19" => "https://launcher.mojang.com/v1/objects/e00c4052dac1d59a1188b2aa9d5a87113aaf1122/server.jar",
+        "1.19.1" => "https://piston-data.mojang.com/v1/objects/8399e1211e95faa421c1507b322dbeae86d604df/server.jar",
         _ => {
             println!("Invalid version");
             return;
