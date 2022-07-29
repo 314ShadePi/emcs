@@ -178,6 +178,31 @@ async fn main() {
     let reader = BufReader::new(command);
 
     reader.lines().filter_map(|line| line.ok()).for_each(|line| println!("{}", line));
+
+    if cfg!(windows) {
+        let file_name = directory.clone().to_string() + "/run.cmd";
+        let mut file = fs::File::create(file_name).unwrap();
+        let content = format!("java -Xmx1024M -Xms1024M -jar ./server.jar nogui");
+        file.write_all(content.as_bytes()).unwrap();
+    } else {
+        let file_name = directory.clone().to_string() + "/run.sh";
+        let mut file = fs::File::create(&file_name).unwrap();
+        let content = format!("java -Xmx1024M -Xms1024M -jar ./server.jar nogui");
+        file.write_all(content.as_bytes()).unwrap();
+        let chmod = Command::new("chmod")
+            .args(["+x", string_to_static_str(file_name)])
+            .current_dir(directory)
+            .output();
+        match chmod {
+            Ok(_) => {
+                println!("run.sh created");
+            }
+            Err(e) => {
+                println!("Failed to create run.sh: {}", e);
+                std::process::exit(1);
+            }
+        }
+    }
 }
 
 fn string_to_static_str(s: String) -> &'static str {
