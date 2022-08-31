@@ -1,14 +1,15 @@
-use std::process::{Command, Stdio};
+use inquire::{self, Confirm, Select, Text};
+use std::fs;
 use std::io::{BufRead, BufReader, Error, ErrorKind};
 use std::io::{Cursor, Read, Write};
-use std::fs;
 use std::path::Path;
+use std::process::{Command, Stdio};
 
 #[tokio::main]
 async fn main() {
     let javatest = Command::new("java").arg("--version").output();
     match javatest {
-        Ok(_) => {},
+        Ok(_) => {}
         Err(e) => {
             println!("{}", e);
             println!("Please install java");
@@ -16,58 +17,34 @@ async fn main() {
         }
     }
 
-
     let versions = vec![
-        "1.12.2".to_string(),
-        "1.13".to_string(),
-        "1.13.1".to_string(),
-        "1.13.2".to_string(),
-        "1.14".to_string(),
-        "1.14.1".to_string(),
-        "1.14.2".to_string(),
-        "1.14.3".to_string(),
-        "1.14.4".to_string(),
-        "1.15".to_string(),
-        "1.15.1".to_string(),
-        "1.15.2".to_string(),
-        "1.16".to_string(),
-        "1.16.1".to_string(),
-        "1.16.2".to_string(),
-        "1.16.3".to_string(),
-        "1.16.4".to_string(),
-        "1.16.5".to_string(),
-        "1.17".to_string(),
-        "1.17.1".to_string(),
-        "1.18".to_string(),
-        "1.18.1".to_string(),
-        "1.18.2".to_string(),
-        "1.19".to_string(),
-        "1.19.1".to_string(),
+        "1.12.2", "1.13", "1.13.1", "1.13.2", "1.14", "1.14.1", "1.14.2", "1.14.3", "1.14.4",
+        "1.15", "1.15.1", "1.15.2", "1.16", "1.16.1", "1.16.2", "1.16.3", "1.16.4", "1.16.5",
+        "1.17", "1.17.1", "1.18", "1.18.1", "1.18.2", "1.19", "1.19.1", "1.19.2",
     ];
     loop {
-        let eula_accepted = asking::yn()
-            .message("Please agree to the MINECRAFT END USER LICENSE AGREEMENT at https://account.mojang.com/documents/minecraft_eula before continuing. [y/N]")
-            .default_value(false)
-            .ask();
+        let eula_accepted = Confirm::new("Please agree to the MINECRAFT END USER LICENSE AGREEMENT at https://account.mojang.com/documents/minecraft_eula before continuing.")
+            .with_default(false)
+            .prompt();
 
-        match async_std::task::block_on(eula_accepted) {
+        match eula_accepted {
             Ok(true) => break,
             Ok(false) => {
                 println!("You have to agree to the MINECRAFT END USER LICENSE AGREEMENT at https://account.mojang.com/documents/minecraft_eula before continuing.");
                 continue;
             }
-            Err(_processing) => {
+            Err(_) => {
                 println!("You have to agree to the MINECRAFT END USER LICENSE AGREEMENT at https://account.mojang.com/documents/minecraft_eula before continuing.");
                 continue;
             }
         }
     }
 
-    let version = asking::select_with_msg(versions.clone(), "Please select a valid version").message("input the minecraft version you want your server to be(Ex. 1.16.3, 1.12.2, 1.13 Etc.(Supports from 1.12.2 and up))\n").ask();
+    let version = Select::new("What Minecraft version do you want?", versions).prompt();
 
-    let version = match async_std::task::block_on(version) {
-        Ok(version) => string_to_static_str(version),
-        Err(_processing) => {
+    let version = match version {
+        Ok(version) => version,
+        Err(_) => {
             println!("You have to select a version before continuing.");
             return;
         }
@@ -99,26 +76,27 @@ async fn main() {
         "1.18.2" => "https://launcher.mojang.com/v1/objects/c8f83c5655308435b3dcf03c06d9fe8740a77469/server.jar",
         "1.19" => "https://launcher.mojang.com/v1/objects/e00c4052dac1d59a1188b2aa9d5a87113aaf1122/server.jar",
         "1.19.1" => "https://piston-data.mojang.com/v1/objects/8399e1211e95faa421c1507b322dbeae86d604df/server.jar",
+        "1.19.2" => "https://piston-data.mojang.com/v1/objects/f69c284232d7c7580bd89a5a4931c3581eae1378/server.jar",
         _ => {
             println!("Invalid version");
             return;
         }
 
     };
-    let directory = asking::text().message("Input the directory where you want to save your server relative to current directory(Ex. C:\\Server\\ on windows, /server/ on linux)\n").ask();
-    let directory = match async_std::task::block_on(directory) {
-        Ok(directory) => string_to_static_str(directory),
+    let directory = Text::new("Please specify your desired output directory.").prompt();
+    let directory = match directory {
+        Ok(directory) => directory,
         Err(_processing) => {
             println!("You have to select a directory before continuing.");
             return;
         }
     };
-    let directory = match directory {
+    let directory: &str = match directory.clone().to_str() {
         "" => {
             println!("You have to select a directory before continuing.");
             return;
         }
-        _ => directory,
+        _ => directory.to_str(),
     };
 
     let directory_creation_res = fs::create_dir_all(&directory);
@@ -136,7 +114,7 @@ async fn main() {
     let response = reqwest::get(url).await.unwrap();
     let file_name: String = directory.clone().to_string() + "/server.jar";
     let mut file = std::fs::File::create(&file_name).unwrap();
-    let mut content =  Cursor::new(response.bytes().await.unwrap());
+    let mut content = Cursor::new(response.bytes().await.unwrap());
     std::io::copy(&mut content, &mut file).unwrap();
     println!("Server downloaded to {}", &file_name);
 
@@ -171,13 +149,18 @@ async fn main() {
         .current_dir(directory)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
-        .spawn().unwrap()
+        .spawn()
+        .unwrap()
         .stdout
-        .ok_or_else(|| Error::new(ErrorKind::Other,"Could not capture standard output.")).unwrap();
+        .ok_or_else(|| Error::new(ErrorKind::Other, "Could not capture standard output."))
+        .unwrap();
 
     let reader = BufReader::new(command);
 
-    reader.lines().filter_map(|line| line.ok()).for_each(|line| println!("{}", line));
+    reader
+        .lines()
+        .filter_map(|line| line.ok())
+        .for_each(|line| println!("{}", line));
 
     if cfg!(windows) {
         let file_name = directory.clone().to_string() + "/run.cmd";
@@ -190,7 +173,7 @@ async fn main() {
         let content = format!("java -Xmx1024M -Xms1024M -jar ./server.jar nogui");
         file.write_all(content.as_bytes()).unwrap();
         let chmod = Command::new("chmod")
-            .args(["+x", string_to_static_str(file_name)])
+            .args(["+x", file_name.to_str()])
             .current_dir(directory)
             .output();
         match chmod {
@@ -205,6 +188,12 @@ async fn main() {
     }
 }
 
-fn string_to_static_str(s: String) -> &'static str {
-    Box::leak(s.into_boxed_str())
+pub trait ToStr {
+    fn to_str(self) -> &'static str;
+}
+
+impl ToStr for String {
+    fn to_str(self) -> &'static str {
+        Box::leak(self.into_boxed_str())
+    }
 }

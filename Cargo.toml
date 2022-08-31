@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-asking = "0.0.2"
+inquire = "0.3.0"
 async-std = "1.12.0"
 reqwest = "0.11.11"
 tokio = { version = "1.20.1", features = ["full"] }
