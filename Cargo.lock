@@ -154,6 +154,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f0b3de4a0c5e67e16066a0715723abd91edc2f9001d09c46e1dca929351e130e"
 
 [[package]]
+name = "c314-utils"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e29ed63d5df67696b5365f16ab814c938a85a96af3a96ee42ab56d7dc21c9b0a"
+
+[[package]]
 name = "cache-padded"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -249,9 +255,10 @@ checksum = "4f94fa09c2aeea5b8839e414b7b841bf429fd25b9c522116ac97ee87856d88b2"
 
 [[package]]
 name = "emcs"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "async-std",
+ "c314-utils",
  "inquire",
  "reqwest",
  "tokio",

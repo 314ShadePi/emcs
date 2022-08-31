@@ -1,3 +1,4 @@
+use c314_utils::prelude::ToStr;
 use inquire::{self, Confirm, Select, Text};
 use std::fs;
 use std::io::{BufRead, BufReader, Error, ErrorKind};
@@ -185,15 +186,5 @@ async fn main() {
                 std::process::exit(1);
             }
         }
-    }
-}
-
-pub trait ToStr {
-    fn to_str(self) -> &'static str;
-}
-
-impl ToStr for String {
-    fn to_str(self) -> &'static str {
-        Box::leak(self.into_boxed_str())
     }
 }
