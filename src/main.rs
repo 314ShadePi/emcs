@@ -1,55 +1,14 @@
+mod error_types;
 use c314_utils::prelude::ToStr;
-use error_stack::{Context, IntoReport, Report, Result, ResultExt};
+use error_stack::{IntoReport, Report, Result, ResultExt};
 use inquire::{self, Confirm, Select, Text};
-use std::fmt;
 use std::fs;
 use std::io::{BufRead, BufReader, Error, ErrorKind};
 use std::io::{Cursor, Read, Write};
 use std::path::Path;
 use std::process::{Command, Stdio};
 
-#[derive(Debug)]
-enum JavaError {
-    NotInstalled,
-}
-
-impl fmt::Display for JavaError {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            JavaError::NotInstalled => fmt.write_str("Java not installed."),
-        }
-    }
-}
-
-impl Context for JavaError {}
-
-#[derive(Debug)]
-enum EulaAcceptError {
-    EulaNotAccepted,
-    UserPromptError(String),
-}
-
-impl fmt::Display for EulaAcceptError {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            EulaAcceptError::EulaNotAccepted => fmt.write_str("EULA not accepted."),
-            EulaAcceptError::UserPromptError(_) => fmt.write_str("User prompt failed."),
-        }
-    }
-}
-
-impl Context for EulaAcceptError {}
-
-#[derive(Debug)]
-struct InstallError;
-
-impl fmt::Display for InstallError {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt.write_str("Installation failed.")
-    }
-}
-
-impl Context for InstallError {}
+use crate::error_types::*;
 
 #[tokio::main]
 async fn main() {
@@ -69,55 +28,38 @@ async fn check_for_java() -> Result<i32, JavaError> {
         .arg("--version")
         .output()
         .report()
-        .change_context(JavaError::NotInstalled)
+        .change_context(JavaError::NotInstalledError)
         .attach_printable("Java not found.".to_string())?;
     Ok(0)
 }
 
 async fn accept_mc_eula() -> Result<i32, EulaAcceptError> {
-    let eula_accepted = Confirm::new("Please agree to the MINECRAFT END USER LICENSE AGREEMENT at https://account.mojang.com/documents/minecraft_eula before continuing.")
+    let eula_accepted = Confirm::new("Please agree to the Minecraft EULA at https://account.mojang.com/documents/minecraft_eula before continuing.")
         .with_default(false)
-        .prompt();
+        .prompt()
+        .report()
+        .change_context(EulaAcceptError::UserPromptError)
+        .attach_printable("Couldn't get confirmation from user.")?;
 
     match eula_accepted {
-        Ok(true) => Ok(0),
-        Ok(false) => {
-            Err(Report::new(EulaAcceptError::EulaNotAccepted)
-                .attach_printable("EULA not accepted."))
-        }
-        Err(err) => Err(
-            Report::new(EulaAcceptError::UserPromptError(format!("{err:?}")))
-                .attach_printable(format!("{err:?}")),
-        ),
+        true => Ok(0),
+        false => Err(Report::new(EulaAcceptError::EulaNotAcceptedError)
+            .attach_printable("EULA not accepted.")),
     }
 }
 
-async fn mcserver() -> Result<i32, InstallError> {
-    check_for_java()
-        .await
-        .change_context(InstallError)
-        .attach_printable("Java is not installed, please install it.".to_string())?;
-
+async fn get_version() -> Result<(i32, String), VersionError> {
     let versions = vec![
         "1.12.2", "1.13", "1.13.1", "1.13.2", "1.14", "1.14.1", "1.14.2", "1.14.3", "1.14.4",
         "1.15", "1.15.1", "1.15.2", "1.16", "1.16.1", "1.16.2", "1.16.3", "1.16.4", "1.16.5",
         "1.17", "1.17.1", "1.18", "1.18.1", "1.18.2", "1.19", "1.19.1", "1.19.2",
     ];
 
-    accept_mc_eula()
-        .await
-        .change_context(InstallError)
-        .attach_printable("You have to read and accept the Minecraft EULA before continuing.")?;
-
-    let version = Select::new("What Minecraft version do you want?", versions).prompt();
-
-    let version = match version {
-        Ok(version) => version,
-        Err(_) => {
-            println!("You have to select a version before continuing.");
-            return;
-        }
-    };
+    let version = Select::new("What Minecraft version do you want?", versions)
+        .prompt()
+        .report()
+        .change_context(VersionError::UserPromptError)
+        .attach_printable("Couldn't get version name from user.")?;
 
     let url = match version {
         "1.12.2" => "https://launcher.mojang.com/v1/objects/886945bfb2b978778c3a0288fd7fab09d315b25f/server.jar",
@@ -147,69 +89,159 @@ async fn mcserver() -> Result<i32, InstallError> {
         "1.19.1" => "https://piston-data.mojang.com/v1/objects/8399e1211e95faa421c1507b322dbeae86d604df/server.jar",
         "1.19.2" => "https://piston-data.mojang.com/v1/objects/f69c284232d7c7580bd89a5a4931c3581eae1378/server.jar",
         _ => {
-            println!("Invalid version");
-            return;
+            return Err(Report::new(VersionError::InvalidVersionError).attach_printable("Invalid version detected."));
         }
 
     };
-    let directory = Text::new("Please specify your desired output directory.").prompt();
-    let directory = match directory {
-        Ok(directory) => directory,
-        Err(_processing) => {
-            println!("You have to select a directory before continuing.");
-            return;
-        }
-    };
-    let directory: &str = match directory.clone().to_str() {
+
+    Ok((0, url.to_string()))
+}
+
+async fn get_directory() -> Result<(i32, String), DirectoryError> {
+    let directory = Text::new("Please specify your desired output directory.")
+        .prompt()
+        .report()
+        .change_context(DirectoryError::UserPromptError)
+        .attach_printable("Couldn't get directory name from user.")?;
+
+    let directory = match directory.clone().to_str() {
         "" => {
             println!("You have to select a directory before continuing.");
-            return;
+            return Err(Report::new(DirectoryError::EmptyNameError)
+                .attach_printable("Directory name must not be empty."));
         }
         _ => directory.to_str(),
     };
 
-    let directory_creation_res = fs::create_dir_all(&directory);
-    match directory_creation_res {
-        Ok(_) => {
-            println!("Directory created");
-        }
-        Err(e) => {
-            println!("Failed to create directory: {}", e);
-            return;
-        }
-    }
+    fs::create_dir_all(&directory)
+        .report()
+        .change_context(DirectoryError::CreationError)
+        .attach_printable(format!("Failed to create directory '{}'", &directory))?;
 
+    Ok((0, directory.to_string()))
+}
+
+async fn download_server(url: String, directory: String) -> Result<i32, ServerDownloadError> {
     println!("Downloading server...");
-    let response = reqwest::get(url).await.unwrap();
+    let response = reqwest::get(url)
+        .await
+        .report()
+        .change_context(ServerDownloadError::RequestError)
+        .attach_printable("Could not fetch server.")?;
+
     let file_name: String = directory.clone().to_string() + "/server.jar";
-    let mut file = std::fs::File::create(&file_name).unwrap();
-    let mut content = Cursor::new(response.bytes().await.unwrap());
-    std::io::copy(&mut content, &mut file).unwrap();
+
+    let mut file = std::fs::File::create(&file_name)
+        .report()
+        .change_context(ServerDownloadError::FileCreationError)
+        .attach_printable("Could not create server.jar.")?;
+
+    let response_bytes = response
+        .bytes()
+        .await
+        .report()
+        .change_context(ServerDownloadError::ResponseBytesError)
+        .attach_printable("Failed to get response bytes.")?;
+
+    let mut content = Cursor::new(response_bytes);
+
+    std::io::copy(&mut content, &mut file)
+        .report()
+        .change_context(ServerDownloadError::ContentCopyError)
+        .attach_printable("Could not copy content to server.jar.")?;
+
     println!("Server downloaded to {}", &file_name);
 
+    Ok(0)
+}
+
+async fn run_server_create_files(directory: String) -> Result<i32, ServerCreateFilesRunError> {
     println!("Starting server to create files...");
-    let command = Command::new("java")
+
+    let output = Command::new("java")
         .args(["-Xmx1024M", "-Xms1024M", "-jar", "./server.jar", "nogui"])
         .current_dir(directory)
-        .output();
+        .output()
+        .report()
+        .change_context(ServerCreateFilesRunError)
+        .attach_printable("Could not run server.")?;
 
-    match command {
-        Ok(output) => {
-            println!("{}", String::from_utf8_lossy(&output.stdout));
-            println!("{}", String::from_utf8_lossy(&output.stderr));
-        }
-        Err(e) => {
-            println!("Failed to start server: {}", e);
-            std::process::exit(1);
-        }
-    }
+    println!("{}", String::from_utf8_lossy(&output.stdout));
+    println!("{}", String::from_utf8_lossy(&output.stderr));
+    Ok(0)
+}
 
-    let mut eula = fs::File::open(Path::new(&directory).join("eula.txt")).unwrap();
+async fn modify_eula(directory: String) -> Result<i32, EulaModError> {
+    let mut eula = fs::File::open(Path::new(&directory).join("eula.txt"))
+        .report()
+        .change_context(EulaModError::FileOpenError)
+        .attach_printable("Failed to open eula.txt.")?;
+
     let mut eula_file = String::new();
-    eula.read_to_string(&mut eula_file).unwrap();
+
+    eula.read_to_string(&mut eula_file)
+        .report()
+        .change_context(EulaModError::FileReadError)
+        .attach_printable("Failed to read from eula.txt.")?;
     let eulafile = eula_file.replace("eula=false", "eula=true");
-    let mut eula = fs::File::create(Path::new(&directory).join("eula.txt")).unwrap();
-    eula.write_all(eulafile.as_bytes()).unwrap();
+
+    let mut eula = fs::File::create(Path::new(&directory).join("eula.txt"))
+        .report()
+        .change_context(EulaModError::FileCreateError)
+        .attach_printable("Failed to create eula.txt.")?;
+
+    eula.write_all(eulafile.as_bytes())
+        .report()
+        .change_context(EulaModError::FileWríteError)
+        .attach_printable("Failed to write to eula.txt.")?;
+
+    Ok(0)
+}
+
+async fn create_server() -> Result<(i32, String), ServerCreationError> {
+    let url = get_version()
+        .await
+        .change_context(ServerCreationError::VersionError)
+        .attach_printable("Couldn't get version.")?;
+
+    let directory = get_directory()
+        .await
+        .change_context(ServerCreationError::DirectoryError)
+        .attach_printable("Failed to create directory.")?;
+
+    download_server(url.1, directory.1.clone())
+        .await
+        .change_context(ServerCreationError::ServerDownloadError)
+        .attach_printable("Failed to download server.")?;
+
+    run_server_create_files(directory.1.clone())
+        .await
+        .change_context(ServerCreationError::ServerRunError)
+        .attach_printable("Could not run server.")?;
+
+    modify_eula(directory.1.clone())
+        .await
+        .change_context(ServerCreationError::EulaModError)
+        .attach_printable("Failed to modify eula.txt.")?;
+    Ok((0, directory.1))
+}
+
+async fn mcserver() -> Result<i32, InstallError> {
+    check_for_java()
+        .await
+        .change_context(InstallError)
+        .attach_printable("Java is not installed, please install it.".to_string())?;
+
+    accept_mc_eula()
+        .await
+        .change_context(InstallError)
+        .attach_printable("You have to read and accept the Minecraft EULA before continuing.")?;
+
+    let directory = create_server()
+        .await
+        .change_context(InstallError)
+        .attach_printable("Failed to create server.")?
+        .1;
 
     println!("Starting server...");
     println!("To stop the server, type \"stop\"");
