@@ -1,45 +1,113 @@
 use c314_utils::prelude::ToStr;
+use error_stack::{Context, IntoReport, Report, Result, ResultExt};
 use inquire::{self, Confirm, Select, Text};
+use std::fmt;
 use std::fs;
 use std::io::{BufRead, BufReader, Error, ErrorKind};
 use std::io::{Cursor, Read, Write};
 use std::path::Path;
 use std::process::{Command, Stdio};
 
-#[tokio::main]
-async fn main() {
-    let javatest = Command::new("java").arg("--version").output();
-    match javatest {
-        Ok(_) => {}
-        Err(e) => {
-            println!("{}", e);
-            println!("Please install java");
-            std::process::exit(1);
+#[derive(Debug)]
+enum JavaError {
+    NotInstalled,
+}
+
+impl fmt::Display for JavaError {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            JavaError::NotInstalled => fmt.write_str("Java not installed."),
         }
     }
+}
+
+impl Context for JavaError {}
+
+#[derive(Debug)]
+enum EulaAcceptError {
+    EulaNotAccepted,
+    UserPromptError(String),
+}
+
+impl fmt::Display for EulaAcceptError {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            EulaAcceptError::EulaNotAccepted => fmt.write_str("EULA not accepted."),
+            EulaAcceptError::UserPromptError(_) => fmt.write_str("User prompt failed."),
+        }
+    }
+}
+
+impl Context for EulaAcceptError {}
+
+#[derive(Debug)]
+struct InstallError;
+
+impl fmt::Display for InstallError {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt.write_str("Installation failed.")
+    }
+}
+
+impl Context for InstallError {}
+
+#[tokio::main]
+async fn main() {
+    env_logger::init();
+    let res = mcserver().await;
+
+    match res {
+        Ok(_) => println!("Done."),
+        Err(err) => {
+            log::error!("\n{err:?}");
+        }
+    }
+}
+
+async fn check_for_java() -> Result<i32, JavaError> {
+    let javatest = Command::new("java")
+        .arg("--version")
+        .output()
+        .report()
+        .change_context(JavaError::NotInstalled)
+        .attach_printable("Java not found.".to_string())?;
+    Ok(0)
+}
+
+async fn accept_mc_eula() -> Result<i32, EulaAcceptError> {
+    let eula_accepted = Confirm::new("Please agree to the MINECRAFT END USER LICENSE AGREEMENT at https://account.mojang.com/documents/minecraft_eula before continuing.")
+        .with_default(false)
+        .prompt();
+
+    match eula_accepted {
+        Ok(true) => Ok(0),
+        Ok(false) => {
+            Err(Report::new(EulaAcceptError::EulaNotAccepted)
+                .attach_printable("EULA not accepted."))
+        }
+        Err(err) => Err(
+            Report::new(EulaAcceptError::UserPromptError(format!("{err:?}")))
+                .attach_printable(format!("{err:?}")),
+        ),
+    }
+}
+
+async fn mcserver() -> Result<i32, InstallError> {
+    check_for_java()
+        .await
+        .change_context(InstallError)
+        .attach_printable("Java is not installed, please install it.".to_string())?;
 
     let versions = vec![
         "1.12.2", "1.13", "1.13.1", "1.13.2", "1.14", "1.14.1", "1.14.2", "1.14.3", "1.14.4",
         "1.15", "1.15.1", "1.15.2", "1.16", "1.16.1", "1.16.2", "1.16.3", "1.16.4", "1.16.5",
         "1.17", "1.17.1", "1.18", "1.18.1", "1.18.2", "1.19", "1.19.1", "1.19.2",
     ];
-    loop {
-        let eula_accepted = Confirm::new("Please agree to the MINECRAFT END USER LICENSE AGREEMENT at https://account.mojang.com/documents/minecraft_eula before continuing.")
-            .with_default(false)
-            .prompt();
 
-        match eula_accepted {
-            Ok(true) => break,
-            Ok(false) => {
-                println!("You have to agree to the MINECRAFT END USER LICENSE AGREEMENT at https://account.mojang.com/documents/minecraft_eula before continuing.");
-                continue;
-            }
-            Err(_) => {
-                println!("You have to agree to the MINECRAFT END USER LICENSE AGREEMENT at https://account.mojang.com/documents/minecraft_eula before continuing.");
-                continue;
-            }
-        }
-    }
+    accept_mc_eula()
+        .await
+        .change_context(InstallError)
+        .attach_printable("You have to read and accept the Minecraft EULA before continuing.")?;
 
     let version = Select::new("What Minecraft version do you want?", versions).prompt();
 
