@@ -38,18 +38,18 @@ pub enum ServerCreationError {
     VersionError,
     DirectoryError,
     ServerDownloadError,
-    ServerRunError,
+    ServerInitError,
     EulaModError,
 }
 
 impl fmt::Display for ServerCreationError {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ServerCreationError::VersionError => todo!(),
-            ServerCreationError::DirectoryError => todo!(),
-            ServerCreationError::ServerDownloadError => todo!(),
-            ServerCreationError::ServerRunError => todo!(),
-            ServerCreationError::EulaModError => todo!(),
+            ServerCreationError::VersionError => fmt.write_str("Failed to get version."),
+            ServerCreationError::DirectoryError => fmt.write_str("Failed to get directory."),
+            ServerCreationError::ServerDownloadError => fmt.write_str("Could not download server."),
+            ServerCreationError::ServerInitError => fmt.write_str("Could not initialize server."),
+            ServerCreationError::EulaModError => fmt.write_str("Failed to modify EULA."),
         }
     }
 }
@@ -118,15 +118,15 @@ impl fmt::Display for ServerDownloadError {
 impl Context for ServerDownloadError {}
 
 #[derive(Debug)]
-pub struct ServerCreateFilesRunError;
+pub struct ServerInitError;
 
-impl fmt::Display for ServerCreateFilesRunError {
+impl fmt::Display for ServerInitError {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt.write_str("Failed to run server.")
     }
 }
 
-impl Context for ServerCreateFilesRunError {}
+impl Context for ServerInitError {}
 
 #[derive(Debug)]
 pub enum EulaModError {
@@ -148,6 +148,40 @@ impl fmt::Display for EulaModError {
 }
 
 impl Context for EulaModError {}
+
+#[derive(Debug)]
+pub enum ServerRunError {
+    SpawnError,
+    StdoutError,
+}
+
+impl fmt::Display for ServerRunError {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ServerRunError::SpawnError => fmt.write_str("Failed to spawn server."),
+            ServerRunError::StdoutError => fmt.write_str("Could not capture stdout."),
+        }
+    }
+}
+
+impl Context for ServerRunError {}
+
+#[derive(Debug)]
+pub enum StartfileCreationError {
+    FileCreateError,
+    FileWríteError,
+}
+
+impl fmt::Display for StartfileCreationError {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            StartfileCreationError::FileCreateError => fmt.write_str("Could not create file."),
+            StartfileCreationError::FileWríteError => fmt.write_str("Could not write to file."),
+        }
+    }
+}
+
+impl Context for StartfileCreationError {}
 
 #[derive(Debug)]
 pub struct InstallError;

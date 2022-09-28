@@ -3,7 +3,7 @@ use c314_utils::prelude::ToStr;
 use error_stack::{IntoReport, Report, Result, ResultExt};
 use inquire::{self, Confirm, Select, Text};
 use std::fs;
-use std::io::{BufRead, BufReader, Error, ErrorKind};
+use std::io::{BufRead, BufReader};
 use std::io::{Cursor, Read, Write};
 use std::path::Path;
 use std::process::{Command, Stdio};
@@ -24,7 +24,7 @@ async fn main() {
 }
 
 async fn check_for_java() -> Result<i32, JavaError> {
-    let javatest = Command::new("java")
+    Command::new("java")
         .arg("--version")
         .output()
         .report()
@@ -155,7 +155,7 @@ async fn download_server(url: String, directory: String) -> Result<i32, ServerDo
     Ok(0)
 }
 
-async fn run_server_create_files(directory: String) -> Result<i32, ServerCreateFilesRunError> {
+async fn run_server_create_files(directory: String) -> Result<i32, ServerInitError> {
     println!("Starting server to create files...");
 
     let output = Command::new("java")
@@ -163,7 +163,7 @@ async fn run_server_create_files(directory: String) -> Result<i32, ServerCreateF
         .current_dir(directory)
         .output()
         .report()
-        .change_context(ServerCreateFilesRunError)
+        .change_context(ServerInitError)
         .attach_printable("Could not run server.")?;
 
     println!("{}", String::from_utf8_lossy(&output.stdout));
@@ -216,7 +216,7 @@ async fn create_server() -> Result<(i32, String), ServerCreationError> {
 
     run_server_create_files(directory.1.clone())
         .await
-        .change_context(ServerCreationError::ServerRunError)
+        .change_context(ServerCreationError::ServerInitError)
         .attach_printable("Could not run server.")?;
 
     modify_eula(directory.1.clone())
@@ -224,6 +224,60 @@ async fn create_server() -> Result<(i32, String), ServerCreationError> {
         .change_context(ServerCreationError::EulaModError)
         .attach_printable("Failed to modify eula.txt.")?;
     Ok((0, directory.1))
+}
+
+async fn run_server(directory: String) -> Result<i32, ServerRunError> {
+    println!("Starting server...");
+    println!("To stop the server, type \"stop\"");
+    let command = Command::new("java")
+        .args(["-Xmx1024M", "-Xms1024M", "-jar", "./server.jar", "nogui"])
+        .current_dir(directory)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .report()
+        .change_context(ServerRunError::SpawnError)
+        .attach_printable("Could not spawn server instance.")?
+        .stdout
+        .ok_or_else(|| {
+            Report::new(ServerRunError::StdoutError)
+                .attach_printable("Could not capture standard output from server instance.")
+        })?;
+
+    let reader = BufReader::new(command);
+
+    reader
+        .lines()
+        .filter_map(|line| line.ok())
+        .for_each(|line| println!("{}", line));
+    Ok(0)
+}
+
+async fn create_start_file(directory: String) -> Result<i32, StartfileCreationError> {
+    if cfg!(windows) {
+        let file_name = directory.clone().to_string() + "/run.cmd";
+        let mut file = fs::File::create(file_name.clone())
+            .report()
+            .change_context(StartfileCreationError::FileCreateError)
+            .attach_printable(format!("Could not create file {file_name}."))?;
+        let content = format!("java -Xmx1024M -Xms1024M -jar ./server.jar nogui");
+        file.write_all(content.as_bytes())
+            .report()
+            .change_context(StartfileCreationError::FileWríteError)
+            .attach_printable(format!("Could not write to file {file_name}"))?;
+    } else {
+        let file_name = directory.clone().to_string() + "/run.sh";
+        let mut file = fs::File::create(file_name.clone())
+            .report()
+            .change_context(StartfileCreationError::FileCreateError)
+            .attach_printable(format!("Could not create file {file_name}."))?;
+        let content = format!("java -Xmx1024M -Xms1024M -jar ./server.jar nogui");
+        file.write_all(content.as_bytes())
+            .report()
+            .change_context(StartfileCreationError::FileWríteError)
+            .attach_printable(format!("Could not write to file {file_name}"))?;
+    }
+    Ok(0)
 }
 
 async fn mcserver() -> Result<i32, InstallError> {
@@ -243,48 +297,15 @@ async fn mcserver() -> Result<i32, InstallError> {
         .attach_printable("Failed to create server.")?
         .1;
 
-    println!("Starting server...");
-    println!("To stop the server, type \"stop\"");
-    let command = Command::new("java")
-        .args(["-Xmx1024M", "-Xms1024M", "-jar", "./server.jar", "nogui"])
-        .current_dir(directory)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .unwrap()
-        .stdout
-        .ok_or_else(|| Error::new(ErrorKind::Other, "Could not capture standard output."))
-        .unwrap();
+    create_start_file(directory.clone())
+        .await
+        .change_context(InstallError)
+        .attach_printable("Failed to create start file.")?;
 
-    let reader = BufReader::new(command);
+    run_server(directory)
+        .await
+        .change_context(InstallError)
+        .attach_printable("Could not run server")?;
 
-    reader
-        .lines()
-        .filter_map(|line| line.ok())
-        .for_each(|line| println!("{}", line));
-
-    if cfg!(windows) {
-        let file_name = directory.clone().to_string() + "/run.cmd";
-        let mut file = fs::File::create(file_name).unwrap();
-        let content = format!("java -Xmx1024M -Xms1024M -jar ./server.jar nogui");
-        file.write_all(content.as_bytes()).unwrap();
-    } else {
-        let file_name = directory.clone().to_string() + "/run.sh";
-        let mut file = fs::File::create(&file_name).unwrap();
-        let content = format!("java -Xmx1024M -Xms1024M -jar ./server.jar nogui");
-        file.write_all(content.as_bytes()).unwrap();
-        let chmod = Command::new("chmod")
-            .args(["+x", file_name.to_str()])
-            .current_dir(directory)
-            .output();
-        match chmod {
-            Ok(_) => {
-                println!("run.sh created");
-            }
-            Err(e) => {
-                println!("Failed to create run.sh: {}", e);
-                std::process::exit(1);
-            }
-        }
-    }
+    Ok(0)
 }
