@@ -1,4 +1,7 @@
 mod error_types;
+mod cli_args;
+use cli_args::Cli;
+use clap::Parser;
 use c314_utils::prelude::ToStaticStr;
 use error_stack::{IntoReport, Report, Result, ResultExt};
 use inquire::{self, Confirm, Select, Text};
@@ -13,6 +16,7 @@ use crate::error_types::*;
 #[tokio::main]
 async fn main() {
     env_logger::init();
+    let _cli = Cli::parse();
     let res = mcserver().await;
 
     match res {
