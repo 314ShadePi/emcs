@@ -1,5 +1,5 @@
 mod error_types;
-use c314_utils::prelude::ToStr;
+use c314_utils::prelude::ToStaticStr;
 use error_stack::{IntoReport, Report, Result, ResultExt};
 use inquire::{self, Confirm, Select, Text};
 use std::fs;
@@ -104,13 +104,13 @@ async fn get_directory() -> Result<(i32, String), DirectoryError> {
         .change_context(DirectoryError::UserPromptError)
         .attach_printable("Couldn't get directory name from user.")?;
 
-    let directory = match directory.clone().to_str() {
+    let directory = match directory.clone().to_static_str() {
         "" => {
             println!("You have to select a directory before continuing.");
             return Err(Report::new(DirectoryError::EmptyNameError)
                 .attach_printable("Directory name must not be empty."));
         }
-        _ => directory.to_str(),
+        _ => directory.to_static_str(),
     };
 
     fs::create_dir_all(&directory)
