@@ -5,13 +5,13 @@ use clap::Parser;
 pub(super) struct Cli {
     /// Accept EULA (optional)
     #[arg(short, long, value_name = "TRUE|FALSE")]
-    eula_accept: Option<bool>,
+    pub eula: Option<bool>,
 
     /// Specify Minecraft version (optional)
     #[arg(short, long, value_name = "VERSION")]
-    mcversion: Option<String>,
+    pub mcversion: Option<String>,
 
     /// Specify target directory (optional)
     #[arg(short, long, value_name = "DIRECTORY")]
-    directory: Option<String>,
+    pub directory: Option<String>,
 }

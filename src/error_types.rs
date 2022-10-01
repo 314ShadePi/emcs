@@ -35,8 +35,6 @@ impl Context for EulaAcceptError {}
 
 #[derive(Debug)]
 pub enum ServerCreationError {
-    VersionError,
-    DirectoryError,
     ServerDownloadError,
     ServerInitError,
     EulaModError,
@@ -45,8 +43,6 @@ pub enum ServerCreationError {
 impl fmt::Display for ServerCreationError {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ServerCreationError::VersionError => fmt.write_str("Failed to get version."),
-            ServerCreationError::DirectoryError => fmt.write_str("Failed to get directory."),
             ServerCreationError::ServerDownloadError => fmt.write_str("Could not download server."),
             ServerCreationError::ServerInitError => fmt.write_str("Could not initialize server."),
             ServerCreationError::EulaModError => fmt.write_str("Failed to modify EULA."),
@@ -182,6 +178,25 @@ impl fmt::Display for StartfileCreationError {
 }
 
 impl Context for StartfileCreationError {}
+
+#[derive(Debug)]
+pub enum InputError {
+    UserPromptError,
+    ArgError,
+    DirectoryError,
+}
+
+impl fmt::Display for InputError {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            InputError::UserPromptError => fmt.write_str("Failed to get/verify user input."),
+            InputError::ArgError => fmt.write_str("Failed to get/verify CLI args."),
+            InputError::DirectoryError => fmt.write_str("Failed to create directory."),
+        }
+    }
+}
+
+impl Context for InputError {}
 
 #[derive(Debug)]
 pub struct InstallError;

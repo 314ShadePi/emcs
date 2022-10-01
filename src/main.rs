@@ -1,8 +1,8 @@
-mod error_types;
 mod cli_args;
-use cli_args::Cli;
-use clap::Parser;
+mod error_types;
 use c314_utils::prelude::ToStaticStr;
+use clap::Parser;
+use cli_args::Cli;
 use error_stack::{IntoReport, Report, Result, ResultExt};
 use inquire::{self, Confirm, Select, Text};
 use std::fs;
@@ -16,15 +16,76 @@ use crate::error_types::*;
 #[tokio::main]
 async fn main() {
     env_logger::init();
-    let _cli = Cli::parse();
-    let res = mcserver().await;
+    let cli = Cli::parse();
+    let version_res: String;
+    let directory_res: String;
 
-    match res {
+    match get_input(cli).await {
+        Ok((_, version, directory)) => {
+            version_res = version;
+            directory_res = directory;
+        }
+        Err(err) => {
+            log::error!("\n{err:?}");
+            std::process::exit(1)
+        }
+    }
+
+    match mcserver(version_res, directory_res).await {
         Ok(_) => println!("Done."),
         Err(err) => {
             log::error!("\n{err:?}");
+            std::process::exit(1)
         }
     }
+}
+
+async fn get_input(cli: Cli) -> Result<(i32, String, String), InputError> {
+    let version_res: String;
+    let directory_res: String;
+
+    if let Some(eula) = cli.eula {
+        if eula == false {
+            return Err(
+                Report::new(InputError::ArgError).attach_printable("Eula must not be false.")
+            );
+        }
+    } else {
+        accept_mc_eula()
+            .await
+            .change_context(InputError::UserPromptError)
+            .attach_printable("Eula must not be false.")?;
+    }
+
+    if let Some(version) = cli.mcversion {
+        version_res = get_version(false, version.to_static_str())
+            .await
+            .change_context(InputError::ArgError)
+            .attach_printable("Could not verify version.")?
+            .1;
+    } else {
+        version_res = get_version(true, "")
+            .await
+            .change_context(InputError::UserPromptError)
+            .attach_printable("Failed to verify version.")?
+            .1;
+    }
+
+    if let Some(directory) = cli.directory {
+        fs::create_dir_all(&directory)
+            .report()
+            .change_context(InputError::DirectoryError)
+            .attach_printable(format!("Failed to create directory '{}'", &directory))?;
+        directory_res = directory;
+    } else {
+        directory_res = get_directory()
+            .await
+            .change_context(InputError::UserPromptError)
+            .attach_printable("Failed to get directory from user.")?
+            .1;
+    }
+
+    Ok((0, version_res, directory_res))
 }
 
 async fn check_for_java() -> Result<i32, JavaError> {
@@ -52,18 +113,22 @@ async fn accept_mc_eula() -> Result<i32, EulaAcceptError> {
     }
 }
 
-async fn get_version() -> Result<(i32, String), VersionError> {
+async fn get_version(needs_user_input: bool, ver: &str) -> Result<(i32, String), VersionError> {
     let versions = vec![
         "1.12.2", "1.13", "1.13.1", "1.13.2", "1.14", "1.14.1", "1.14.2", "1.14.3", "1.14.4",
         "1.15", "1.15.1", "1.15.2", "1.16", "1.16.1", "1.16.2", "1.16.3", "1.16.4", "1.16.5",
         "1.17", "1.17.1", "1.18", "1.18.1", "1.18.2", "1.19", "1.19.1", "1.19.2",
     ];
 
-    let version = Select::new("What Minecraft version do you want?", versions)
-        .prompt()
-        .report()
-        .change_context(VersionError::UserPromptError)
-        .attach_printable("Couldn't get version name from user.")?;
+    let mut version: &str = ver;
+
+    if needs_user_input == true {
+        version = Select::new("What Minecraft version do you want?", versions)
+            .prompt()
+            .report()
+            .change_context(VersionError::UserPromptError)
+            .attach_printable("Couldn't get version name from user.")?;
+    }
 
     let url = match version {
         "1.12.2" => "https://launcher.mojang.com/v1/objects/886945bfb2b978778c3a0288fd7fab09d315b25f/server.jar",
@@ -202,32 +267,22 @@ async fn modify_eula(directory: String) -> Result<i32, EulaModError> {
     Ok(0)
 }
 
-async fn create_server() -> Result<(i32, String), ServerCreationError> {
-    let url = get_version()
-        .await
-        .change_context(ServerCreationError::VersionError)
-        .attach_printable("Couldn't get version.")?;
-
-    let directory = get_directory()
-        .await
-        .change_context(ServerCreationError::DirectoryError)
-        .attach_printable("Failed to create directory.")?;
-
-    download_server(url.1, directory.1.clone())
+async fn create_server(url: String, directory: String) -> Result<i32, ServerCreationError> {
+    download_server(url, directory.clone())
         .await
         .change_context(ServerCreationError::ServerDownloadError)
         .attach_printable("Failed to download server.")?;
 
-    run_server_create_files(directory.1.clone())
+    run_server_create_files(directory.clone())
         .await
         .change_context(ServerCreationError::ServerInitError)
         .attach_printable("Could not run server.")?;
 
-    modify_eula(directory.1.clone())
+    modify_eula(directory.clone())
         .await
         .change_context(ServerCreationError::EulaModError)
         .attach_printable("Failed to modify eula.txt.")?;
-    Ok((0, directory.1))
+    Ok(0)
 }
 
 async fn run_server(directory: String) -> Result<i32, ServerRunError> {
@@ -284,22 +339,16 @@ async fn create_start_file(directory: String) -> Result<i32, StartfileCreationEr
     Ok(0)
 }
 
-async fn mcserver() -> Result<i32, InstallError> {
+async fn mcserver(version: String, directory: String) -> Result<i32, InstallError> {
     check_for_java()
         .await
         .change_context(InstallError)
         .attach_printable("Java is not installed, please install it.".to_string())?;
 
-    accept_mc_eula()
+    create_server(version, directory.clone())
         .await
         .change_context(InstallError)
-        .attach_printable("You have to read and accept the Minecraft EULA before continuing.")?;
-
-    let directory = create_server()
-        .await
-        .change_context(InstallError)
-        .attach_printable("Failed to create server.")?
-        .1;
+        .attach_printable("Failed to create server.")?;
 
     create_start_file(directory.clone())
         .await
