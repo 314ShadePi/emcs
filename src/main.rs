@@ -252,16 +252,16 @@ async fn modify_eula(directory: String) -> Result<i32, EulaModError> {
         .report()
         .change_context(EulaModError::FileReadError)
         .attach_printable("Failed to read from eula.txt.")?;
-    let eulafile = eula_file.replace("eula=false", "eula=true");
+    let eula_file = eula_file.replace("eula=false", "eula=true");
 
     let mut eula = fs::File::create(Path::new(&directory).join("eula.txt"))
         .report()
         .change_context(EulaModError::FileCreateError)
         .attach_printable("Failed to create eula.txt.")?;
 
-    eula.write_all(eulafile.as_bytes())
+    eula.write_all(eula_file.as_bytes())
         .report()
-        .change_context(EulaModError::FileWríteError)
+        .change_context(EulaModError::FileWriteError)
         .attach_printable("Failed to write to eula.txt.")?;
 
     Ok(0)
@@ -312,28 +312,28 @@ async fn run_server(directory: String) -> Result<i32, ServerRunError> {
     Ok(0)
 }
 
-async fn create_start_file(directory: String) -> Result<i32, StartfileCreationError> {
+async fn create_start_file(directory: String) -> Result<i32, StartFileCreationError> {
     if cfg!(windows) {
         let file_name = directory.clone().to_string() + "/run.cmd";
         let mut file = fs::File::create(file_name.clone())
             .report()
-            .change_context(StartfileCreationError::FileCreateError)
+            .change_context(StartFileCreationError::FileCreateError)
             .attach_printable(format!("Could not create file {file_name}."))?;
         let content = format!("java -Xmx1024M -Xms1024M -jar ./server.jar nogui");
         file.write_all(content.as_bytes())
             .report()
-            .change_context(StartfileCreationError::FileWríteError)
+            .change_context(StartFileCreationError::FileWriteError)
             .attach_printable(format!("Could not write to file {file_name}"))?;
     } else {
         let file_name = directory.clone().to_string() + "/run.sh";
         let mut file = fs::File::create(file_name.clone())
             .report()
-            .change_context(StartfileCreationError::FileCreateError)
+            .change_context(StartFileCreationError::FileCreateError)
             .attach_printable(format!("Could not create file {file_name}."))?;
         let content = format!("java -Xmx1024M -Xms1024M -jar ./server.jar nogui");
         file.write_all(content.as_bytes())
             .report()
-            .change_context(StartfileCreationError::FileWríteError)
+            .change_context(StartFileCreationError::FileWriteError)
             .attach_printable(format!("Could not write to file {file_name}"))?;
     }
     Ok(0)

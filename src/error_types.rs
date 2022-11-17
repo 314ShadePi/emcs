@@ -129,7 +129,7 @@ pub enum EulaModError {
     FileOpenError,
     FileReadError,
     FileCreateError,
-    FileWríteError,
+    FileWriteError,
 }
 
 impl fmt::Display for EulaModError {
@@ -138,7 +138,7 @@ impl fmt::Display for EulaModError {
             EulaModError::FileOpenError => fmt.write_str("Could not open file."),
             EulaModError::FileReadError => fmt.write_str("Could not read from file."),
             EulaModError::FileCreateError => fmt.write_str("Could not create file."),
-            EulaModError::FileWríteError => fmt.write_str("Could not write to file."),
+            EulaModError::FileWriteError => fmt.write_str("Could not write to file."),
         }
     }
 }
@@ -163,21 +163,21 @@ impl fmt::Display for ServerRunError {
 impl Context for ServerRunError {}
 
 #[derive(Debug)]
-pub enum StartfileCreationError {
+pub enum StartFileCreationError {
     FileCreateError,
-    FileWríteError,
+    FileWriteError,
 }
 
-impl fmt::Display for StartfileCreationError {
+impl fmt::Display for StartFileCreationError {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            StartfileCreationError::FileCreateError => fmt.write_str("Could not create file."),
-            StartfileCreationError::FileWríteError => fmt.write_str("Could not write to file."),
+            StartFileCreationError::FileCreateError => fmt.write_str("Could not create file."),
+            StartFileCreationError::FileWriteError => fmt.write_str("Could not write to file."),
         }
     }
 }
 
-impl Context for StartfileCreationError {}
+impl Context for StartFileCreationError {}
 
 #[derive(Debug)]
 pub enum InputError {
