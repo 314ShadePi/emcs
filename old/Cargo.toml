@@ -1,6 +1,6 @@
 [package]
 name = "emcs"
-version = "0.1.0"
+version = "0.3.0"
 edition = "2021"
 authors = ["314ShadePi <erikkirkegaardstage@gmail.com>"]
 description = "An Easy MineCraft Server installer. Not affiliated with Mojang."
@@ -8,11 +8,11 @@ description = "An Easy MineCraft Server installer. Not affiliated with Mojang."
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+inquire = "0.4.0"
+reqwest = "0.11.11"
+tokio = { version = "1.20.1", features = ["rt-multi-thread", "macros"] }
 c314-utils = "0.2.0"
-clap = { version = "4.0.29", features = ["derive"] }
-env_logger = "0.10.0"
-inquire = "0.5.2"
+error-stack = { version = "0.1.1", features = ["futures"] }
+env_logger = "0.9.1"
 log = "0.4.17"
-reqwest = "0.11.13"
-slint = "0.3.2"
-tokio = "1.23.0"
+clap = { version = "4.0.4", features = ["derive"] }
