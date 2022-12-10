@@ -117,7 +117,7 @@ async fn get_version(needs_user_input: bool, ver: &str) -> Result<(i32, String),
     let versions = vec![
         "1.12.2", "1.13", "1.13.1", "1.13.2", "1.14", "1.14.1", "1.14.2", "1.14.3", "1.14.4",
         "1.15", "1.15.1", "1.15.2", "1.16", "1.16.1", "1.16.2", "1.16.3", "1.16.4", "1.16.5",
-        "1.17", "1.17.1", "1.18", "1.18.1", "1.18.2", "1.19", "1.19.1", "1.19.2",
+        "1.17", "1.17.1", "1.18", "1.18.1", "1.18.2", "1.19", "1.19.1", "1.19.2", "1.19.3",
     ];
 
     let mut version: &str = ver;
@@ -157,6 +157,7 @@ async fn get_version(needs_user_input: bool, ver: &str) -> Result<(i32, String),
         "1.19" => "https://launcher.mojang.com/v1/objects/e00c4052dac1d59a1188b2aa9d5a87113aaf1122/server.jar",
         "1.19.1" => "https://piston-data.mojang.com/v1/objects/8399e1211e95faa421c1507b322dbeae86d604df/server.jar",
         "1.19.2" => "https://piston-data.mojang.com/v1/objects/f69c284232d7c7580bd89a5a4931c3581eae1378/server.jar",
+        "1.19.3" => "https://piston-data.mojang.com/v1/objects/c9df48efed58511cdd0213c56b9013a7b5c9ac1f/server.jar",
         _ => {
             return Err(Report::new(VersionError::InvalidVersionError).attach_printable("Invalid version detected."));
         }
