@@ -557,7 +557,6 @@ dependencies = [
  "home",
  "inquire",
  "log",
- "reqwest",
  "simplelog",
  "tokio",
 ]
@@ -565,6 +564,12 @@ dependencies = [
 [[package]]
 name = "emcs_lib"
 version = "1.0.0"
+dependencies = [
+ "c314-utils",
+ "log",
+ "reqwest",
+ "tokio",
+]
 
 [[package]]
 name = "encoding_rs"
