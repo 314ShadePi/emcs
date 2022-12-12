@@ -1,3 +1,11 @@
 {
-	"cSpell.words": ["mcserver", "mcversion", "Minecraft", "nogui", "reqwest"]
+	"cSpell.words": [
+		"emcs",
+		"mcserver",
+		"mcversion",
+		"Minecraft",
+		"nogui",
+		"reqwest",
+		"simplelog"
+	]
 }
