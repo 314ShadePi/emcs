@@ -1,10 +1,8 @@
-use std::fs::File;
-
-use simplelog::*;
-
 fn main() {
     // Initialize logger
     {
+        use simplelog::*;
+        use std::fs::File;
         let log_file = match home::home_dir() {
             Some(home_dir) => home_dir.join(".emcs.log"),
             None => {
