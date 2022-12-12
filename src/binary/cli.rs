@@ -8,7 +8,7 @@ pub struct Cli {
     #[arg(short, long)]
     pub nogui: bool,
 
-    /// Set log level. Valid options are: Off, Error, Warn, Info, Debug, Trace. Defaults to Warn.
+    /// Set log level. Valid options are: Off, Error, Warn, Info, Debug, Trace. Optional with Warn as default.
     #[arg(short, long)]
     pub log_level: Option<LevelFilter>,
 }
