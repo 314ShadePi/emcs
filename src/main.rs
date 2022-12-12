@@ -1,6 +1,7 @@
-mod binary;
-use binary::cli::Cli;
+mod cli;
 use clap::Parser;
+use cli::Cli;
+use emcs_lib::*;
 
 fn main() {
     let cli = Cli::parse();
