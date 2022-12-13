@@ -1,9 +1,9 @@
 pub mod components;
 
-use dioxus::{desktop::DesktopContext, prelude::*};
+use dioxus::{desktop::use_window, prelude::*};
 
 pub fn ui(cx: Scope) -> Element {
-    let desktop = cx.consume_context::<DesktopContext>().unwrap();
+    let desktop = use_window(&cx);
     desktop.set_title("EMCS");
     cx.render(rsx! {
         div {
