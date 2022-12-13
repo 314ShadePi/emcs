@@ -8,8 +8,8 @@ fn main() {
     let cli = Cli::parse();
     init_logger(&cli);
 
-    log::info!("Starting app.");
-    log::info!("{:#?}", cli);
+    log::info!("Starting app...");
+    log::trace!("{:#?}", cli);
 
     if cli.nogui {
         no_gui(cli);
@@ -19,11 +19,11 @@ fn main() {
 }
 
 fn no_gui(cli: Cli) {
-    println!("nogui");
+    log::trace!("nogui");
 }
 
 fn gui(cli: Cli) {
-    println!("gui");
+    log::trace!("gui");
     dioxus::desktop::launch_cfg(ui, |c| {
         c.with_window(|w| w.with_resizable(true).with_maximized(true))
     })
