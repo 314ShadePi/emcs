@@ -1,20 +1,15 @@
 mod cli;
+mod ui;
 use clap::Parser;
 use cli::Cli;
+use ui::ui;
 
 fn main() {
     let cli = Cli::parse();
     init_logger(&cli);
 
     log::info!("Starting app.");
-    log::trace!("Hello World!");
-    log::trace!("a trace example");
-    log::debug!("deboogging");
-    log::info!("such information");
-    log::warn!("o_O");
-    log::error!("boom");
     log::info!("{:#?}", cli);
-    log::trace!("2 + 2 = 4? = {}", emcs_lib::add(2, 2) == 4);
 
     if cli.nogui {
         no_gui(cli);
@@ -23,8 +18,16 @@ fn main() {
     }
 }
 
-fn no_gui(cli: Cli) {}
-fn gui(cli: Cli) {}
+fn no_gui(cli: Cli) {
+    println!("nogui");
+}
+
+fn gui(cli: Cli) {
+    println!("gui");
+    dioxus::desktop::launch_cfg(ui, |c| {
+        c.with_window(|w| w.with_resizable(true).with_maximized(true))
+    })
+}
 
 fn init_logger(cli: &Cli) {
     use simplelog::*;
