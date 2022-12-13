@@ -1,7 +1,6 @@
 mod cli;
 use clap::Parser;
 use cli::Cli;
-use emcs_lib::*;
 
 fn main() {
     let cli = Cli::parse();
@@ -15,7 +14,17 @@ fn main() {
     log::warn!("o_O");
     log::error!("boom");
     log::info!("{:#?}", cli);
+    log::trace!("2 + 2 = 4? = {}", emcs_lib::add(2, 2) == 4);
+
+    if cli.nogui {
+        no_gui(cli);
+    } else {
+        gui(cli);
+    }
 }
+
+fn no_gui(cli: Cli) {}
+fn gui(cli: Cli) {}
 
 fn init_logger(cli: &Cli) {
     use simplelog::*;
