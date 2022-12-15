@@ -4,6 +4,8 @@ use clap::Parser;
 use cli::Cli;
 use ui::ui;
 
+use crate::ui::UiProps;
+
 fn main() {
     let cli = Cli::parse();
     init_logger(&cli);
@@ -24,7 +26,7 @@ fn no_gui(cli: Cli) {
 
 fn gui(cli: Cli) {
     log::trace!("gui");
-    dioxus::desktop::launch_cfg(ui, |c| {
+    dioxus::desktop::launch_with_props(ui, UiProps { cli: cli }, |c| {
         c.with_window(|w| w.with_resizable(true).with_maximized(true))
     })
 }

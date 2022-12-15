@@ -13,7 +13,15 @@ pub struct Cli {
     #[arg(short, long)]
     pub log_level: Option<LevelFilter>,
 
-    /// Set desired Minecraft version. Valid options are 1.12.2, 1.13, 1.13.1 and up. Optional with None as default.
+    /// Set desired Minecraft version. Valid options are 1.12.2, 1.13, 1.13.1 and up. Optional with ask user as default.
     #[arg(short, long)]
     pub mc_version: Option<MCVersions>,
+
+    /// Accept the Minecraft EULA. Optional with ask user as default.
+    #[arg(short, long)]
+    pub eula_accepted: bool,
+
+    /// Set the directory where you want to install the server. Optional with ask user as default.
+    #[arg(short, long)]
+    pub server_dir: Option<String>,
 }

@@ -557,6 +557,8 @@ dependencies = [
  "home",
  "inquire",
  "log",
+ "serde",
+ "serde_json",
  "simplelog",
  "tokio",
 ]
