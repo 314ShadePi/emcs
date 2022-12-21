@@ -12,7 +12,7 @@ pub struct UiProps {
 
 pub fn ui(cx: Scope<UiProps>) -> Element {
     let desktop = use_window(&cx);
-    desktop.set_title("EMCS");
+    desktop.set_title("Easy Minecraft Server Installer");
     let cli = format!("{:#?}", &cx.props.cli);
     let css = cx.props.css.clone();
     let css = css.to_static_str();
