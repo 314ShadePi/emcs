@@ -26,7 +26,8 @@ fn no_gui(cli: Cli) {
 
 fn gui(cli: Cli) {
     log::trace!("gui");
-    dioxus::desktop::launch_with_props(ui, UiProps { cli: cli }, |c| {
+    let css = include_str!("./style.css").to_string();
+    dioxus::desktop::launch_with_props(ui, UiProps { cli: cli, css: css }, |c| {
         c.with_window(|w| w.with_resizable(true).with_maximized(true))
     })
 }
