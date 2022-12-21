@@ -6,7 +6,7 @@ use log::LevelFilter;
 #[command(author, version, about, long_about = None)]
 pub struct Cli {
     /// Toggle gui
-    #[arg(short, long)]
+    #[arg(long)]
     pub nogui: bool,
 
     /// Set log level. Valid options are: Off, Error, Warn, Info, Debug, Trace. Optional with Warn as default.
@@ -24,4 +24,8 @@ pub struct Cli {
     /// Set the directory where you want to install the server. Optional with ask user as default.
     #[arg(short, long)]
     pub server_dir: Option<String>,
+
+    /// Don't confirm cli choices when in nogui mode.
+    #[arg(short)]
+    pub yes: bool,
 }
