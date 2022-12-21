@@ -3,6 +3,7 @@ use std::process::{Command, Stdio};
 
 fn main() {
     println!("cargo:rerun-if-changed=styles/");
+    println!("cargo:rerun-if-changed=src/style.css");
     let compile_sass = Command::new("sass")
         .args(["styles/index.scss", "src/style.css"])
         .stdout(Stdio::piped())
