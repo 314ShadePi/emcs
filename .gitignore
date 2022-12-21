@@ -1,6 +1,8 @@
 /target
 /testservers
 /servers
+/src/style.css
+/src/style.css.map
 
 
 # Added by cargo
