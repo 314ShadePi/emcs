@@ -1,8 +1,11 @@
 use std::{error::Error, str::FromStr};
 
 use serde::{Deserialize, Serialize};
+use strum::EnumIter;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize, Serialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize, Serialize, EnumIter,
+)]
 pub enum MCVersions {
     V1_12_2,
     V1_13,

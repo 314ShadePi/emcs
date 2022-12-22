@@ -6,11 +6,15 @@
 		"emcs",
 		"fullhd",
 		"mcserver",
+		"MCVER",
 		"mcversion",
+		"mcversions",
 		"Minecraft",
 		"Mojang",
 		"nogui",
 		"reqwest",
-		"simplelog"
+		"SERVERDIR",
+		"simplelog",
+		"thiserror"
 	]
 }

@@ -1,7 +1,9 @@
 mod cli;
+mod term;
 mod ui;
 use clap::Parser;
 use cli::Cli;
+use term::term;
 use ui::ui;
 
 use crate::ui::UiProps;
@@ -22,6 +24,13 @@ fn main() {
 
 fn no_gui(cli: Cli) {
     log::trace!("nogui");
+    match term(cli) {
+        Ok(_) => (),
+        Err(e) => {
+            log::error!("{:?}", e);
+            std::process::exit(1);
+        }
+    }
 }
 
 fn gui(cli: Cli) {

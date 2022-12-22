@@ -25,7 +25,7 @@ pub struct Cli {
     #[arg(short, long)]
     pub server_dir: Option<String>,
 
-    /// Don't confirm cli choices when in nogui mode.
+    /// Don't confirm cli choices when in nogui mode. Assumes all values were passed in from cli.
     #[arg(short)]
     pub yes: bool,
 }
