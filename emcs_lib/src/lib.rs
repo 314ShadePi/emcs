@@ -4,7 +4,7 @@ pub mod options;
 
 use std::{
     fs::{self, File},
-    io::{self, Cursor, Read, Write},
+    io::{self, BufRead, BufReader, Cursor, Read, Write},
     process::Command,
 };
 
@@ -18,7 +18,7 @@ pub fn install_mc_server(options: options::Options) -> Result<(), InstallServerE
         .build()
         .unwrap()
         .block_on(async {
-            match create_server_files(options).await {
+            match create_server_files(options.clone()).await {
                 Ok(_) => (),
                 Err(e) => {
                     log::error!("{:?}", e);
@@ -31,7 +31,7 @@ pub fn install_mc_server(options: options::Options) -> Result<(), InstallServerE
 }
 
 pub fn check_for_java() -> Result<(), InstallServerError> {
-    Command::new("java").arg("--version").spawn()?;
+    Command::new("java").arg("--version").output()?;
 
     Ok(())
 }
@@ -50,7 +50,7 @@ async fn create_server_files(options: options::Options) -> Result<(), InstallSer
     Command::new("java")
         .args(["-Xmx1024M", "-Xms1024M", "-jar", "./server.jar", "nogui"])
         .current_dir(options.dir())
-        .spawn()?;
+        .output()?;
 
     let mut eula = File::open(options.dir().join("eula.txt"))?;
     let mut eula_content = String::new();
@@ -59,5 +59,16 @@ async fn create_server_files(options: options::Options) -> Result<(), InstallSer
     let mut eula = File::create(options.dir().join("eula.txt"))?;
     eula.write_all(eula_content.as_bytes())?;
 
-    todo!()
+    let start_file = if cfg!(windows) { "run.cmd" } else { "run.sh" };
+
+    let mut file = File::create(options.dir().join(start_file))?;
+    let content = "java -Xmx1024M -Xms1024M -jar ./server.jar nogui".to_string();
+    file.write_all(content.as_bytes())?;
+
+    log::info!(
+        "Server installed. To run the server execute the {} script.",
+        options.dir().join(start_file).to_str().unwrap()
+    );
+
+    Ok(())
 }
